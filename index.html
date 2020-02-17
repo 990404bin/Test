@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html>
+<head> 
+<meta charset = "UTF-8">
+<title> main </title>
+</head>
+<body>
+<canvas id = "mainCanvas" width = "1080px" height = "720px" style = "border:1px solid black"> </canvas>
+<script>
+
+var pressedKey = null;
+var releasedKey = null;
+
+var leftKey = false;
+var rightKey = false;
+var jumpKey = false;
+
+//키 이벤트
+document.addEventListener("keydown", function(e) { 
+	switch(e.keyCode)
+	{
+		case 37 :
+			leftKey = true;
+			break;
+		case 39 : 
+			rightKey = true;
+			break;
+		case 38 : 
+			jumpKey = true;
+			break;
+		case 32 : 
+			newScene = true;
+			break;
+			
+		default:
+			break;
+	}
+	console.log(e.keyCode);
+ }, false);
+
+document.addEventListener("keyup", function(e) { 
+	switch(e.keyCode)
+	{
+		case 37:
+			leftKey = false;
+			break;
+		case 39:
+			rightKey = false;
+			break;
+		case 38:
+			jumpKey = false;
+		default:
+			break;
+	}
+	
+ } , false);
+
+var canvas = document.getElementById("mainCanvas");
+ 
+window.onload = function()
+{
+	var game = new Game(canvas);
+	game.Update();
+	
+	//Scenes
+	var ingameScene = new IngameScene(); 
+	//~Scenes
+	game.SceneCreate(ingameScene, "ingameScene1", game.sceneIndex);
+	game.SceneRunning("ingameScene1");
+}
+
+class Game
+{
+	constructor(_canv)
+	{
+		this.canvas = _canv;
+		this.ctx = this.canvas.getContext('2d');
+		console.log(this.ctx);
+		
+		this.sceneArr = new Array();
+		this.currentScene = null;
+		
+		this.now = 0;
+		this.last = 0;
+		this.elapsed = 0;
+		this.timeDelta = 0;
+	
+		this.sceneIndex = 0;
+	}
+	
+	Update()
+	{
+	    this.last = this.now;
+        this.now = performance.now(); 
+        this.timeDelta = (this.now - this.last) / 1000; 
+        this.elapsed += this.timeDelta; 
+		
+		this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+		if (this.sceneArr.length == 0)
+		{
+			
+		}
+		else
+		{
+			if (this.currentScene != null)
+			{
+				this.currentScene.Update(this.timeDelta);
+				this.currentScene.Render(this.ctx);
+			}
+		}
+		
+		requestAnimationFrame(this.Update.bind(this));
+		
+	}	
+	
+	SceneSearch(name)
+	{
+		for (let i = 0; i < this.sceneArr.length; i++)
+		{
+			if (this.sceneArr[i].name == name)
+			{
+				return i;
+			}
+		}
+		return null;
+	}
+	
+	SceneRunning(name)
+	{
+		let runningScene = this.SceneSearch(name);
+		
+		if (runningScene == null)
+			return;
+			
+		if (this.currentScene != null)
+		{
+			this.currentScene.Pause();
+		}
+		this.currentScene = this.sceneArr[runningScene].scene;
+	}
+	
+	SceneCreate(scene, name, index)
+	{
+		let sd = new SceneDate(scene, name, index);
+		this.sceneArr.push(sd);
+		this.sceneIndex++;
+	}	
+}
+
+class SceneDate
+{
+	constructor(scene, name, index)
+	{
+		this.scene = scene;
+		this.name = name;
+		this.index = index;
+	}
+}
+
+
+
+class Scene
+{
+	constructor()
+	{
+		this.objectArr = [];
+	}
+	Init()
+	{
+		this.elapsed = 0;
+	}
+	
+	Update(_dt)
+	{
+		this.objectArr.forEach((child) => {child.Update(_dt); });
+	}
+	
+	Render(ctx)
+	{
+		this.objectArr.forEach((child) => {child.Render(ctx); });
+	}
+	
+	Pause()
+	{
+		
+	}
+}
+
+var ImageStruct = {
+	imgSrc : null,
+	sx : 0,
+	sy : 0,
+	sWidth : 0,
+	sHeight : 0,
+	x : 0,
+	y : 0,
+	dWidth : 0,
+	dHeight : 0
+}
+
+class IngameScene extends Scene
+{
+		constructor()
+		{
+			super();	
+			
+			this.ObjPlayerObj = new ObjPlayer(this);
+			this.objectArr.push(this.ObjPlayerObj);
+			this.ObjPlayerObj.Init();
+			this.ObjPlayerObj.spriteSheet.CreateImage('CharacterImg.png', 0, 0, 48, 48, 0, 0, 48, 48);
+			
+			for (let i = 0; i < 37; i++)
+			{
+				let objSolid = new ObjSolid();
+				this.objectArr.push(objSolid);
+				objSolid.Init();
+				objSolid.SetInfo(i * 32, 600, 32, 32);
+				objSolid.spriteSheet.CreateImage('wallImage.png', 0, 0, 32, 32, 0, 0, 32, 32);
+			}
+		}
+		
+		Init()
+		{
+			super.Init();
+		}
+		Update(_dt)
+		{
+			super.Update(_dt);
+			this.elapsed += _dt;
+		}
+	
+		Pause()
+		{
+			super.Pause();
+		}
+		
+}
+
+class LobbyScene extends Scene
+{
+		constructor()
+		{
+			super();	
+		}
+		
+		Init()
+		{
+			super.Init();
+		}
+		Update(_dt)
+		{
+			super.Update(_dt);
+			this.elapsed += _dt;
+		}
+	
+		Pause()
+		{
+			super.Pause();
+		}
+}
+
+class GameObject
+{
+	constructor(parrent) 
+	{
+		console.log(ImageStruct);
+		this.parrent = parrent;
+		this.spriteSheet = new SpriteSheet();
+	}
+	
+	Init() 
+	{
+		this.x = 0;
+		this.y = 0;
+		this.width = 0;
+		this.height = 0;
+		this.xPoint = 16; //x 앵글좌표
+		this.yPoint = 16; //y 앵글좌표
+		this.imageXscale = 1;
+		this.imageYscale = 1;
+		this.imageAngle = 0;
+	}
+	
+	Update(_dt)
+	{
+		if (this.spriteSheet != null)
+		{
+			this.spriteSheet.Update(_dt);
+		}
+	}
+	Render(ctx)
+	{
+		if (this.spriteSheet.sprArr[this.spriteSheet.currentImageIndex] != null)
+		{
+			ctx.save();
+			ctx.translate(this.x + this.xPoint, this.y + this.yPoint);
+			ctx.rotate((Math.PI / 180) * this.imageAngle);
+			ctx.scale(this.imageXscale, this.imageYscale);
+			this.spriteSheet.DrawSprite(this.x - (this.x + this.xPoint), this.y - (this.y + this.yPoint), ctx);
+			ctx.translate(-(this.x + this.xPoint), -(this.y + this.yPoint));
+			ctx.restore();
+		}
+	}
+	
+	SetInfo(x, y, width, height)
+	{
+		this.x = x;
+		this.y = y;
+		this.width = width;
+		this.height = height;
+	}
+	
+	RectCollision(x, y, obj)
+	{
+		for (let i = 0; i < this.parrent.objectArr.length; i++)
+		{
+			if (this.parrent.objectArr[i] instanceof obj)
+			{
+				let objs = this.parrent.objectArr[i];
+					
+				let thisXW = this.x + this.width;
+				let thisYH = this.y + this.height;
+				let objXW = objs.x + objs.width;
+				let objYH = objs.y + objs.height;
+				
+				if (thisXW + x > objs.x && this.x + x < objXW)
+				{
+					if (thisYH + y > objs.y && this.y + y < objYH)
+					{
+						return true;
+					}
+				}
+			}
+		}
+		
+		return false;
+	}
+	
+}
+
+class ObjPlayer extends GameObject
+{
+	constructor(parrent) { super(parrent); }
+	
+	Init()
+	{
+		super.Init();
+		
+		this.imageAngle = 0;
+		
+		this.x = 32;
+		this.width = 48;
+		this.height = 48;
+		this.gravity = 25;
+		this.force = { x:0, y:0 }
+		this.speed = 0;
+		this.friction = 0.7;  // 0 마찰력 가장 쎔 1 마찰력 없음
+		this.jumpPower = 10;
+	}
+	
+	Update(_dt)
+	{
+		super.Update(_dt);
+		
+		this.StepUpdate(_dt);
+	}
+	
+	
+	KeyControll(_dt)
+	{
+		if (leftKey)
+		{
+			this.force.x = -5;
+			this.imageXscale = -1;
+		}
+		else if (rightKey)
+		{
+			this.force.x = 5;
+			this.imageXscale = 1;
+		}
+		else
+		{
+			if (this.speed < 0.6)
+			{
+				this.force.x = 0;
+			}
+			else 
+			{
+				this.force.x = this.force.x * this.friction;
+			}
+		}
+		
+		if (jumpKey)
+		{
+			if (this.RectCollision(0, 0.5, ObjSolid))
+			{
+				this.force.y = -this.jumpPower;
+				console.log(this.spriteSheet);
+			}
+		}
+	}
+	
+	StepUpdate(_dt) //기본 물리 움직임
+	{
+		this.KeyControll(_dt);
+		
+		this.speed = Math.abs(this.force.x);
+		
+		this.force.y += this.gravity * _dt; // 중력적용
+		
+		if (this.RectCollision(this.force.x, 0, ObjSolid))
+		{
+			while (!this.RectCollision(Math.sign(this.force.x) * 0.1, 0, ObjSolid))
+			{
+				this.x += Math.sign(this.force.x) * 0.1;
+			}
+			this.force.x = 0;
+		}
+		this.x += this.force.x;
+		
+		if (this.RectCollision(0, this.force.y, ObjSolid))
+		{
+			while (!this.RectCollision(0, Math.sign(this.force.y) * 0.1, ObjSolid))
+			{
+				this.y += Math.sign(this.force.y) * 0.1;
+			}
+			this.force.y = 0;
+		}
+		this.y += this.force.y;
+		
+		if (this.y + this.width > canvas.height) 
+		{
+			this.y = canvas.height - this.width;
+		}
+	}
+	
+	Render(ctx)
+	{
+		super.Render(ctx);
+	}
+}
+
+class ObjSolid extends GameObject
+{
+	constructor(parrent) { super(parrent); }
+	Init() 
+	{ 
+		super.Init();
+	}
+	Update(_dt) { super.Update(_dt); }
+	
+	Render(ctx)
+	{ 
+		super.Render(ctx);
+	}
+}
+
+class Sprite
+{
+	constructor(imgSrc, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight)
+	{
+		this.image = new Image();
+		this.imageSrc = imgSrc;
+		this.sx = sx;
+		this.sy = sy;
+		this.sWidth = sWidth;
+		this.sHeight = sHeight;
+		this.dx = dx;
+		this.dy = dy;
+		this.dWidth = dWidth;
+		this.dHeight = dHeight;
+		
+		this.image.src = this.imageSrc;
+	}
+	
+	DrawSprite(x, y, ctx)
+	{
+		if (this.image.complete)
+		{
+			ctx.drawImage(this.image, this.sx, this.sy, this.sWidth, this.sHeight, x, y, this.dWidth, this.dHeight);
+		}
+	}
+}
+
+class SpriteSheet
+{
+	constructor()
+	{
+		this.sprArr = new Array();
+		this.imageSpeed = 1;
+		this.elapsed = 0;
+		this.currentImageIndex = 0;
+	}
+	
+	CreateImage(imgSrc, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight)
+	{
+		let newSpr = new Sprite(imgSrc, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
+		this.sprArr.push(newSpr);
+		
+		this.currentImageIndex = 0;
+	}
+	
+	Update(_dt)
+	{
+		this.elapsed += _dt;
+		
+		if (this.imageSpeed <= 0)
+		{
+			return;
+		}
+		
+		if (this.elapsed > this.imageSpeed)
+		{
+			this.elapsed = 0;
+			console.log(this.currentImageIndex);
+			
+			if (this.currentImageIndex + 1 < this.sprArr.length)
+			{
+				this.currentImageIndex++;
+			}
+			else
+			{
+				this.currentImageIndex = 0;
+			}
+		}
+	}
+	
+	DrawSprite(x, y, ctx)
+	{
+		this.sprArr[this.currentImageIndex].DrawSprite(x, y, ctx);
+	}
+
+}
+
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+<!-- 이벤트 명 -->
+<!-- 설명  -->
+<!-- change -->
+<!-- 변동이 있을 때 발생  -->
+<!-- click -->
+<!-- 클릭시 발생  -->
+ <!-- focus -->
+ <!-- 포커스를 얻었을 때 발생 -->
+ <!-- keydown -->
+<!-- 키를 눌렀을 때 발생  -->
+<!-- keyup -->
+<!-- 키에서 손을 땟을 때 발생  -->
+ <!-- load -->
+<!-- 로드가 완료 되었을 때 발생  -->
+ <!-- mousedown -->
+ <!-- 마우스를 클릭 했을 때 발생 -->
+ <!-- mouseout -->
+<!-- 마우스가 특정 객체 밖으로 나갔을 때 발생  -->
+ <!-- mouseover -->
+<!-- 마우스가 특정 객체 위로 올려졌을 때 발생  -->
+ <!-- mousemove -->
+<!-- 마우스가 움직였을 때 발생  -->
+ <!-- mouseup -->
+<!-- 마우스에서 손을 땟을 때 발생  -->
+ <!-- select -->
+<!-- option 태그 등에서 선택을 햇을 때 발생  -->
